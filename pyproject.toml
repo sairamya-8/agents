@@ -15,4 +15,6 @@ dependencies = [
     "langchain-mcp-adapters>=0.1.0",
     # Environment variables
     "python-dotenv>=1.0.0",
+    # Data manipulation
+    "pandas>=2.2.0",
 ]
