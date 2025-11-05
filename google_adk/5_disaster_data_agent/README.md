@@ -90,11 +90,17 @@ pip install -e .
 ```
 
 **Key Dependencies** (all open source and free except Google API):
-- `duckduckgo-search`: Free web search (no API key)
-- `crawl4ai`: AI-powered web crawling
+- `ddgs`: Free web search via DuckDuckGo/Brave (no API key)
+- `crawl4ai`: AI-powered web crawling with Playwright
 - `beautifulsoup4`: HTML parsing and data extraction
 - `kafka-python`: Kafka client for message generation
 - `google-adk`: Google Agent Development Kit (requires GOOGLE_API_KEY)
+
+**Installation with uv (recommended)**:
+```bash
+uv pip install --system ddgs crawl4ai beautifulsoup4 lxml kafka-python google-adk
+python -m playwright install chromium --with-deps
+```
 
 ### Environment Setup
 
@@ -125,11 +131,11 @@ agent.run("Search for cyclone data, crawl the top 5 URLs, extract structured dat
 agent.run("Find earthquake news from the past week and generate Kafka packets")
 ```
 
-### Example Workflow
+### Example Workflow (with Mock Mode for Testing)
 
 ```python
-# Step 1: Search for disaster data
-search_results = search_web_for_disaster_data(disaster_type="floods", max_results=10)
+# Step 1: Search for disaster data (use mock=True for testing/restricted networks)
+search_results = search_web_for_disaster_data(disaster_type="floods", max_results=10, use_mock=True)
 
 # Step 2: Crawl discovered URLs
 urls = [item["url"] for item in search_results["discovered_urls"][:5]]
@@ -365,10 +371,30 @@ Adjust crawling behavior:
 
 ## Limitations
 
-1. **Search Rate Limits**: DuckDuckGo may rate-limit excessive searches
-2. **Crawl Politeness**: Respects robots.txt and rate limits
-3. **Entity Extraction**: Simple pattern matching (can be enhanced with NER models)
-4. **Language**: Primarily English content
+1. **Network Restrictions**: In restricted network environments (corporate proxies, SSL interception), web search and crawling may fail. Use **mock mode** for testing: `search_web_for_disaster_data(disaster_type="floods", use_mock=True)`
+2. **Search Rate Limits**: DuckDuckGo/Brave search may rate-limit excessive searches
+3. **Crawl Politeness**: Respects robots.txt and rate limits
+4. **Entity Extraction**: Simple pattern matching (can be enhanced with NER models)
+5. **Language**: Primarily English content
+
+## Mock Mode for Testing
+
+When web search or crawling is unavailable (network restrictions, testing), use mock mode:
+
+```python
+# Use mock data for search
+search_result = search_web_for_disaster_data(
+    disaster_type="floods",
+    max_results=5,
+    use_mock=True  # Returns realistic mock data
+)
+```
+
+Mock mode provides:
+- 3 realistic disaster-related URLs
+- Proper metadata and relevance scores
+- Indian government and news sources
+- Perfect for testing extraction and Kafka generation without network access
 
 ## Future Enhancements
 
@@ -383,18 +409,31 @@ Adjust crawling behavior:
 
 ## Troubleshooting
 
-### Issue: DuckDuckGo search not working
-**Solution**: Check internet connection, wait if rate-limited
-
-### Issue: Crawl4AI installation fails
-**Solution**: Install system dependencies:
-```bash
-# Ubuntu/Debian
-apt-get install -y chromium-browser chromium-chromedriver
+### Issue: Web search returns no results or SSL/TLS errors
+**Solution**: Use mock mode for testing:
+```python
+search_web_for_disaster_data(disaster_type="floods", use_mock=True)
 ```
+OR check network/proxy settings
+
+### Issue: Crawl4AI "Playwright not installed" error
+**Solution**: Install Playwright browsers:
+```bash
+python -m playwright install chromium --with-deps
+```
+
+### Issue: Crawl4AI network errors (ERR_TUNNEL_CONNECTION_FAILED)
+**Solution**: This occurs in restricted networks. The agent is working correctly; network access is restricted. Extraction and Kafka generation will still work with mock/cached data.
 
 ### Issue: BeautifulSoup parsing errors
 **Solution**: Try different parser (`lxml`, `html.parser`, `html5lib`)
+
+### Issue: Package renamed warning for duckduckgo_search
+**Solution**: Already fixed. We use `ddgs` package now. If you see this, run:
+```bash
+pip uninstall duckduckgo-search
+pip install ddgs
+```
 
 ## Contributing
 

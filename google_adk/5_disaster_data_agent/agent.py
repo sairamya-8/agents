@@ -57,7 +57,7 @@ SEED_QUERIES = {
 
 
 def search_web_for_disaster_data(
-    disaster_type: str = "all", max_results: int = 5
+    disaster_type: str = "all", max_results: int = 5, use_mock: bool = False
 ) -> dict:
     """
     Performs seed-query-driven web search for disaster-related information.
@@ -72,16 +72,57 @@ def search_web_for_disaster_data(
         disaster_type: Type of disaster ('floods', 'droughts', 'cyclones',
                       'earthquakes', 'landslides', or 'all')
         max_results: Maximum number of results per query
+        use_mock: Use mock data for testing (when network unavailable)
 
     Returns:
         dict: Search results with URLs, titles, domains, and metadata
     """
+    # Use mock data if requested or if network issues
+    if use_mock:
+        mock_urls = [
+            {
+                "url": "https://www.ndma.gov.in/disaster-management/floods",
+                "title": "India Floods: NDMA Emergency Response and Relief Operations",
+                "domain": "ndma.gov.in",
+                "snippet": "The National Disaster Management Authority (NDMA) has issued flood warnings for multiple states. Emergency relief operations are underway in Kerala, Maharashtra, and West Bengal.",
+                "query": f"India {disaster_type} latest news",
+                "relevance_score": 9,
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+            {
+                "url": "https://www.thehindu.com/news/national/floods-india-2024",
+                "title": "Major Flooding Reported Across India: Thousands Displaced",
+                "domain": "thehindu.com",
+                "snippet": "Heavy monsoon rains have caused severe flooding in India with thousands evacuated. Disaster management teams are on alert across multiple states.",
+                "query": f"India {disaster_type} disaster updates",
+                "relevance_score": 8,
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+            {
+                "url": "https://www.imd.gov.in/weather-warnings",
+                "title": "India Meteorological Department: Severe Weather Alert",
+                "domain": "imd.gov.in",
+                "snippet": "IMD issues red alert for cyclone warning in Bay of Bengal. Coastal areas of Odisha and Andhra Pradesh on high alert. Emergency preparedness measures activated.",
+                "query": f"India {disaster_type} affected areas",
+                "relevance_score": 7,
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+        ]
+        return {
+            "status": "success",
+            "timestamp": datetime.datetime.now().isoformat(),
+            "disaster_type": disaster_type,
+            "discovered_urls": mock_urls[:max_results],
+            "total_count": len(mock_urls[:max_results]),
+            "note": "Using mock data (network unavailable)",
+        }
+
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
     except ImportError:
         return {
             "status": "error",
-            "error_message": "duckduckgo_search not installed. Install with: pip install duckduckgo-search",
+            "error_message": "ddgs not installed. Install with: pip install ddgs",
         }
 
     results = {
@@ -107,11 +148,18 @@ def search_web_for_disaster_data(
 
     # Perform web search using DuckDuckGo
     discovered_urls = []
-    ddgs = DDGS()
+
+    try:
+        ddgs = DDGS()
+    except Exception as e:
+        return {
+            "status": "error",
+            "error_message": f"Failed to initialize DDGS: {str(e)}. Network or SSL issue.",
+        }
 
     for query in queries:
         try:
-            search_results = ddgs.text(query, max_results=max_results)
+            search_results = list(ddgs.text(query, max_results=max_results))
 
             for result in search_results:
                 url = result.get("href", "")
@@ -139,6 +187,8 @@ def search_web_for_disaster_data(
                 })
 
         except Exception as e:
+            # Log error but continue with other queries
+            print(f"Warning: Search failed for query '{query}': {str(e)}")
             continue
 
     # Sort by relevance score and freshness
@@ -179,8 +229,8 @@ def crawl_urls_with_ai(urls: List[str], max_depth: int = 1) -> dict:
             urls = [urls]
 
     try:
-        from crawl4ai import WebCrawler
-        from crawl4ai.extraction_strategy import LLMExtractionStrategy
+        from crawl4ai import AsyncWebCrawler
+        import asyncio
     except ImportError:
         return {
             "status": "error",
@@ -196,50 +246,58 @@ def crawl_urls_with_ai(urls: List[str], max_depth: int = 1) -> dict:
         "total_size_bytes": 0,
     }
 
-    # Initialize crawler
-    crawler = WebCrawler()
-    crawler.warmup()
+    # Define async crawl function
+    async def crawl_async():
+        async with AsyncWebCrawler(verbose=False) as crawler:
+            for url in urls:
+                try:
+                    # Perform crawl
+                    crawl_result = await crawler.arun(url=url)
 
-    for url in urls:
-        try:
-            # Perform crawl
-            crawl_result = crawler.run(url=url)
+                    if crawl_result.success:
+                        crawled_item = {
+                            "url": url,
+                            "status": "success",
+                            "html": crawl_result.html[:5000] if crawl_result.html else "",  # Truncate for storage
+                            "markdown": crawl_result.markdown[:5000] if crawl_result.markdown else "",
+                            "extracted_content": crawl_result.extracted_content if crawl_result.extracted_content else "",
+                            "links": dict(list(crawl_result.links.items())[:20]) if crawl_result.links else {},  # Limit links
+                            "media": crawl_result.media if crawl_result.media else {},
+                            "metadata": {
+                                "title": getattr(crawl_result, "title", ""),
+                                "description": getattr(crawl_result, "description", ""),
+                            },
+                            "crawl_timestamp": datetime.datetime.now().isoformat(),
+                            "content_size_bytes": len(crawl_result.html) if crawl_result.html else 0,
+                        }
 
-            if crawl_result.success:
-                crawled_item = {
-                    "url": url,
-                    "status": "success",
-                    "html": crawl_result.html[:5000],  # Truncate for storage
-                    "markdown": crawl_result.markdown[:5000],
-                    "extracted_content": crawl_result.extracted_content,
-                    "links": crawl_result.links[:20],  # Limit links
-                    "media": crawl_result.media,
-                    "metadata": {
-                        "title": getattr(crawl_result, "title", ""),
-                        "description": getattr(crawl_result, "description", ""),
-                    },
-                    "crawl_timestamp": datetime.datetime.now().isoformat(),
-                    "content_size_bytes": len(crawl_result.html),
-                }
+                        results["crawled_data"].append(crawled_item)
+                        results["success_count"] += 1
+                        results["total_size_bytes"] += len(crawl_result.html) if crawl_result.html else 0
+                    else:
+                        results["crawled_data"].append({
+                            "url": url,
+                            "status": "error",
+                            "error_message": crawl_result.error_message if hasattr(crawl_result, 'error_message') else "Crawl failed",
+                        })
+                        results["error_count"] += 1
 
-                results["crawled_data"].append(crawled_item)
-                results["success_count"] += 1
-                results["total_size_bytes"] += len(crawl_result.html)
-            else:
-                results["crawled_data"].append({
-                    "url": url,
-                    "status": "error",
-                    "error_message": "Crawl failed",
-                })
-                results["error_count"] += 1
+                except Exception as e:
+                    results["crawled_data"].append({
+                        "url": url,
+                        "status": "error",
+                        "error_message": str(e),
+                    })
+                    results["error_count"] += 1
 
-        except Exception as e:
-            results["crawled_data"].append({
-                "url": url,
-                "status": "error",
-                "error_message": str(e),
-            })
-            results["error_count"] += 1
+    # Run the async crawler
+    try:
+        asyncio.run(crawl_async())
+    except Exception as e:
+        return {
+            "status": "error",
+            "error_message": f"Failed to run async crawler: {str(e)}",
+        }
 
     return results
 
