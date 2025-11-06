@@ -28,7 +28,7 @@
    - ✅ Dummy MCP client implements expected interface
    - ✅ Progressive disclosure filesystem layout correct
 
-### ✅ Runtime Tests (PASSED with Fix)
+### ✅ Runtime Tests (Multiple Fixes Applied)
 
 **4. Google ADK Web Interface Test**
    ```bash
@@ -53,8 +53,37 @@
 
    **Status**: ✅ Fixed in commit 290f464
    - Instruction rewritten with zero curly braces
-   - Agent should now load successfully in ADK web interface
+   - Agent loads successfully in ADK web interface
    - Ready for interactive testing
+
+**5. Code Execution Environment Access**
+
+   **Issue Found**: FileNotFoundError when accessing `./servers/` directory
+   ```
+   FileNotFoundError: [Errno 2] No such file or directory: './servers'
+   ```
+
+   **Root Cause**: Google ADK's `BuiltInCodeExecutor` runs in an isolated sandbox with an empty filesystem. The `./servers/` directory and MCP server files created in the agent's working directory are not accessible in the code execution environment.
+
+   **Discovery**: Found during actual user testing when agent tried to list available MCP servers.
+
+   **Solution**: Complete redesign of MCP server delivery:
+   - Enabled stateful code execution (`stateful=True` on BuiltInCodeExecutor)
+   - Embedded complete MCP client + server code inline in the instruction
+   - Agent now runs setup code once to initialize all tools in memory
+   - Tools exposed as simple functions: `gdrive_*()` and `sf_*()`
+   - No dependency on external filesystem
+
+   **New Workflow**:
+   1. Agent runs setup code block (provided in instruction) to initialize MCP tools
+   2. Tools become available as in-memory functions
+   3. Agent uses tools to accomplish tasks
+   4. Stateful execution persists variables between code executions
+
+   **Status**: ✅ Fixed in commit b68f51b
+   - All MCP server logic now inline
+   - Zero filesystem dependencies
+   - Fully functional in isolated execution environment
 
 ## What Works
 
