@@ -44,10 +44,10 @@ class MCPClient:
 
     @classmethod
     def call_tool(cls, server, tool, params):
-        handler_name = f"_handle_{server}_{tool}"
+        handler_name = "_handle_" + server + "_" + tool
         handler = getattr(cls, handler_name, None)
         if not handler:
-            raise ValueError(f"Unknown tool: {server}.{tool}")
+            raise ValueError("Unknown tool: " + server + "." + tool)
         return handler(params)
 
     @classmethod
@@ -55,7 +55,7 @@ class MCPClient:
         doc_id = params.get("document_id")
         doc = cls._documents.get(doc_id)
         if not doc:
-            return dict(error=f"Document {doc_id} not found")
+            return dict(error="Document " + doc_id + " not found")
         return doc
 
     @classmethod
@@ -63,7 +63,7 @@ class MCPClient:
         sheet_id = params.get("sheet_id")
         sheet = cls._sheets.get(sheet_id)
         if not sheet:
-            return dict(error=f"Sheet {sheet_id} not found")
+            return dict(error="Sheet " + sheet_id + " not found")
         return sheet.get("rows", [])
 
     @classmethod
@@ -89,7 +89,7 @@ class MCPClient:
     @classmethod
     def _handle_salesforce_update_record(cls, params):
         record_id = params.get("record_id", "unknown")
-        return dict(success=True, id=record_id, message=f"Updated record {record_id}")
+        return dict(success=True, id=record_id, message="Updated record " + record_id)
 
 # Create global client instance
 mcp_client = MCPClient()
