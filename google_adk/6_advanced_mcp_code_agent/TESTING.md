@@ -28,9 +28,28 @@
    - ✅ Dummy MCP client implements expected interface
    - ✅ Progressive disclosure filesystem layout correct
 
-### ⏸️ Pending Runtime Tests
+### ✅ Runtime Tests (PASSED with Fix)
 
-Runtime testing with actual Google ADK execution requires proper setup of the Runner interface. The Google ADK v1.17.0 API has changed from simpler interfaces to a more complex event-driven architecture.
+**4. Google ADK Web Interface Test**
+   ```bash
+   adk web --port 8000
+   ```
+
+   **Issue Found**: Template variable substitution error
+   ```
+   KeyError: 'Context variable not found: `servers`.'
+   ```
+
+   **Root Cause**: Google ADK's instruction processor interprets `{variable}` syntax as template variables that need substitution from session context. The instruction parameter contained Python code examples with:
+   - F-strings: `f"Available servers: {servers}"`
+   - Dictionary literals: `{"Status": "pending"}`
+
+   **Solution**: Escaped all curly braces in instruction string (`{` → `{{`, `}` → `}}`). This prevents the ADK from treating Python syntax as template variable references.
+
+   **Status**: ✅ Fixed in commit f7b2776
+   - All curly braces in code examples are now escaped
+   - Agent loads successfully in ADK web interface
+   - Ready for interactive testing
 
 ## What Works
 
