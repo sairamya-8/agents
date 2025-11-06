@@ -32,7 +32,8 @@ This agent implements a comprehensive disaster data collection system focused on
 **Objective**: Perform AI-based web crawling from discovered URLs.
 
 **Implementation**:
-- Crawl4AI framework integration
+- Crawl4AI AsyncWebCrawler integration with async/await
+- Event loop compatibility (works both standalone and within Google ADK)
 - Crawl scheduling and error handling
 - Support for both dynamic and static pages
 - Configurable crawl depth and limits
@@ -40,7 +41,7 @@ This agent implements a comprehensive disaster data collection system focused on
 - Crawl statistics and logging (duration, success rate, content size)
 
 **Functions**:
-- `crawl_urls_with_ai(urls, max_depth)`: Crawls URLs using Crawl4AI
+- `crawl_urls_with_ai(urls, max_depth)`: Crawls URLs using Crawl4AI (async-safe)
 
 ### US1.3: Structured Text and Table Extraction ✅
 
@@ -424,6 +425,9 @@ python -m playwright install chromium --with-deps
 
 ### Issue: Crawl4AI network errors (ERR_TUNNEL_CONNECTION_FAILED)
 **Solution**: This occurs in restricted networks. The agent is working correctly; network access is restricted. Extraction and Kafka generation will still work with mock/cached data.
+
+### Issue: "asyncio.run() cannot be called from a running event loop"
+**Solution**: Already fixed! The crawl function now detects if it's running within an existing event loop (like Google ADK) and handles it correctly using ThreadPoolExecutor. No action needed.
 
 ### Issue: BeautifulSoup parsing errors
 **Solution**: Try different parser (`lxml`, `html.parser`, `html5lib`)

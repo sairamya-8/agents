@@ -291,8 +291,20 @@ def crawl_urls_with_ai(urls: List[str], max_depth: int = 1) -> dict:
                     results["error_count"] += 1
 
     # Run the async crawler
+    # Handle both cases: standalone and within an existing event loop (e.g., Google ADK)
     try:
-        asyncio.run(crawl_async())
+        # Check if there's already a running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # We're already in an event loop (e.g., Google ADK agent)
+            # Run in a separate thread to avoid "asyncio.run() cannot be called from a running event loop"
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, crawl_async())
+                future.result(timeout=120)  # 2 minute timeout
+        except RuntimeError:
+            # No running loop, safe to use asyncio.run()
+            asyncio.run(crawl_async())
     except Exception as e:
         return {
             "status": "error",
