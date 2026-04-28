@@ -1,13 +1,13 @@
 name: Claude Code
 
 on:
-  issue_comment:
-    types: [created]
+  issues:
+    types: [opened]
 
 jobs:
   claude:
-    # Only run if comment contains @claude
-    if: contains(github.event.comment.body, '@claude')
+    # Run only if @claude is in issue description
+    if: contains(github.event.issue.body, '@claude')
 
     runs-on: ubuntu-latest
     permissions:
@@ -23,4 +23,13 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            The user mentioned @claude in the issue.
+
+            Read the issue carefully.
+            Implement the requested feature or fix.
+            Create a new branch.
+            Commit changes.
+            Open a pull request with a proper description.
+
           claude_args: "--max-turns 10"
