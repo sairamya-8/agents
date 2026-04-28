@@ -33,7 +33,7 @@ from google.adk.tools.mcp_tool.mcp_session_manager import (
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
 
 # Configure MCP server URL from environment variable or use default
-MCP_SERVER_URL = os.environ.get("APWRIMS_MCP_URL", "http://localhost:9081/mcp")
+MCP_SERVER_URL = os.environ.get("APWRIMS_MCP_URL", "http://localhost:8081/mcp")
 
 # Optional: Configure authentication headers if needed
 MCP_AUTH_HEADERS = {}
